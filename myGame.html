@@ -1,0 +1,252 @@
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content = "ie=edge">
+  <title>The Plague</title>
+  <!-- ************************************************ CSS Styling for Our Game *********************************************** -->
+  <style>
+    body{
+      height: 100vh;
+      width: 100vw;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      margin: 0;
+      background-image: linear-gradient(red, yellow);
+   }
+    #board{
+      background-color: white;
+      width: 100vmin;
+      height: 100vmin;
+      display: grid;
+      grid-template-rows: repeat(21, 1fr);
+      grid-template-columns: repeat(21, 1fr);
+      border: 4px solid lightgreen;
+
+      
+    }
+    .covid19{
+      background-image:  url('virus2.jpg');
+      background-size: cover;
+    }
+    
+    .patient{
+      background-image: url('smile.jpg');
+      background-size: cover;
+    }
+    h1{
+      color: darkgreen;
+      font-style: bold;
+      font-size: 500%;
+
+    }
+
+  </style>
+    <!-- ************************************************ CSS Styling for  Game *********************************************** -->
+
+</head>
+  <!-- ************************************************ HTML part required for game *********************************************** -->
+
+<body>
+  <h1>The</h1><br>
+  <div id = "board"> 
+
+  </div>  
+  <h1>Plague</h1><br>
+</body>
+  <!-- ************************************************ HTML part required for game *********************************************** -->
+
+
+   <!-- ******************************************* Javascript part required for game ******************************************* -->
+
+<script defer>
+  //############################### VARIABLE AND CONSTANT DECLARATIONS ######################################
+  const SPREAD_RATE = 5
+  const EXPANSION = 1
+  const GRID_SIZE = 21
+  let newSegments = 0
+  const covBody = [
+    { x: 11, y: 11 }
+  ]
+  let lastRenderTime = 0
+  let gameOver = false;
+  let lastInputDirection = {x: 0, y: 0}
+  let inputDirection = {x: 0, y: 0}
+  let patient = getRandomPatient()
+  const board = document.querySelector("#board")
+   //###################### MAIN FUNCTION THAT RENDERS FRAME EVERY FEW MILISECONDS AND CHECKS IF GAME IS OVER ######################
+
+  function main(currentTime){
+    if(gameOver){
+      if(confirm('You Lost! Virus Contained. Press OK to restart')){
+        window.location = '/myGame.html'
+      }
+      return
+    }
+    window.requestAnimationFrame(main)
+    const secondsSinceLastRender = (currentTime - lastRenderTime) / 1000
+    if(secondsSinceLastRender < 1/SPREAD_RATE) return
+    console.log('Render')
+    lastRenderTime = currentTime
+    update()
+    draw()
+  }
+  window.requestAnimationFrame(main) //Last Request for frame
+
+  //############################################### FUNCTIOIN UPDATES VIRUS AND PATIENT POSITIOIN #####################################
+  function update()
+  {
+    addSegments()
+    const inputDirection = getInputDirection()
+    for(let i = covBody.length - 2; i>=0; i--){
+      covBody[i+1] = { ...covBody[i] }
+    }
+    covBody[0].x += inputDirection.x
+    covBody[0].y += inputDirection.y
+    if(onPlague(patient)){
+      expandPlague(EXPANSION)
+      patient = getRandomPatient()
+    }
+    checkVaccine()
+  }
+
+  //######################################### FUNCTION TO DRAW RESPECTIVE UPDATE IN EACH FRAME ######################################
+  
+  function draw()
+  {
+    board.innerHTML = ''
+    covBody.forEach(segment =>{
+      const covElement = document.createElement('div')
+      covElement.style.gridRowStart = segment.y
+      covElement.style.gridColumnStart = segment.x
+      covElement.classList.add('covid19')
+      board.appendChild(covElement)
+
+    })
+    const pElement = document.createElement('div')
+    pElement.style.gridRowStart = patient.y
+    pElement.style.gridColumnStart = patient.x
+    pElement.classList.add('patient')
+    board.appendChild(pElement)
+  }
+
+  //####################################### EVENT LISTENER TO TAKE KEYBOARD INPUT (4 ARROW KEYS) #####################################
+  
+  window.addEventListener('keydown', e => {
+    switch(e.key){
+      case 'ArrowUp':
+        if(lastInputDirection.y !== 0) break
+        inputDirection = {x: 0, y: -1}
+        break
+      case 'ArrowDown':
+         if(lastInputDirection.y !== 0) break
+         inputDirection = {x:0, y: 1}
+         break
+      case 'ArrowLeft':
+         if(lastInputDirection.x !== 0) break
+         inputDirection = {x:-1, y: 0}
+         break
+      case 'ArrowRight':
+         if(lastInputDirection.x !== 0) break
+         inputDirection = {x:1, y: 0}
+         break
+
+
+    }
+    
+  })
+
+  //############################### FUNCTION TO ENSURE VIRUS CANNOT REVERSE DIRECTION ALONG AN AXIS ####################################
+  
+  function getInputDirection(){
+    lastInputDirection = inputDirection
+    return inputDirection
+  }
+
+  //################################### FUNCTION TO DETERMINE ADDITIONAL UNITS OF VIRUS TO BE ADDED ###################################
+
+  function expandPlague(amount){
+    newSegments += amount
+  }
+
+  //######################################### FUNCTION CHECK IF PATIENT HAS BEEN INFECTED #########################################
+
+  function onPlague(position, {ignoreHead = false} = {})
+  {
+    return covBody.some((segment, index) =>{
+      if(ignoreHead && index===0) return false
+      return equalPositions(segment, position)
+    })
+  }
+
+  //################################ FUNCTION TO CHECK IF TWO POSITIONS ON THE GRID ARE EQUAL ####################################
+
+  function equalPositions(pos1, pos2)
+  {
+    return pos1.x === pos2.x && pos1.y === pos2.y
+  }
+
+  //############################################ FUNCTION TO ADD MORE UNITS TO VIRUS CHAIN ############################################
+
+  function addSegments()
+  {
+    for(let i=0; i<newSegments; i++){
+      covBody.push({ ...covBody[covBody.length - 1]})
+    }
+    newSegments =0
+  }
+
+  //########################################### FUNCTION TO CALC. GRID POSN. FOR PATIENT #############################################
+
+  function getRandomPatient(){
+    let newPatient
+    while(newPatient == null || onPlague(newPatient)){
+      newPatient = randomGridPos()
+    }
+    return newPatient
+  }
+
+  //############################################ FUNCTION TO GENERATE RANDOM POSN. ON GRID ############################################
+
+  function randomGridPos()
+  {
+    return{
+      x: Math.floor(Math.random() * GRID_SIZE) +1,
+      y: Math.floor(Math.random() * GRID_SIZE) + 1
+    }
+  }
+
+  //###################################### FUNCTION TO CHECK IF VIRUS RAN INTO THE WALLS OR ITSELF #####################################
+
+  function checkVaccine()
+  {
+    gameOver = outsideGrid(getVirusPos()) || intersection()
+  }
+
+  //######################################## FUNCTION TO CHECK IF A POSITION IS OUTSIDE THE GRID #######################################
+
+  function outsideGrid(position)
+  {
+    return(
+      position.x < 1 || position.x > GRID_SIZE || position.y < 1 || position.y > GRID_SIZE
+    )
+  }
+
+  //############################################ FUNCTION TO GET POSITION OF VIRUS HEAD ############################################
+
+  function getVirusPos()
+  {
+    return covBody[0]
+  }
+
+  //########################################## FUNCTION TO CHECK IF VIRUS RAN INTO ITSELF ###########################################
+
+  function intersection()
+  {
+    onPlague(covBody[0], {ignoreHead: true})
+  }  
+</script>
+   <!-- ******************************************* Javascript part required for game ******************************************* -->
+
+</html>
